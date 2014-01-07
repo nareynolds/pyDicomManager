@@ -532,7 +532,7 @@ class DicomManager:
         
         # check that source-series directory exists
         if not os_path_exists( srcSeriesDir ):
-            print "Source series directory not found: %s" % seriesDir
+            print "Source series directory not found: %s" % srcSeriesDir
             return
         
         # check that destination-root directory exists
