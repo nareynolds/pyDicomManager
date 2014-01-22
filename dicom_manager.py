@@ -988,7 +988,7 @@ class DicomManager:
                 dbCur = self.dbCon.cursor()
                 dbCur.execute( "SELECT count(*) FROM %s WHERE Project = ? AND SeriesId = ?" % self.settings.dbTblProjectSeries, ( self.settings.projectName, seriesId ) )
                 if dbCur.fetchone()[0] == 0:
-                    print "The series with id %d is not found in the project %s!" & ( seriesId, self.settings.projectName )
+                    print "The series with id %d is not found in the project %s!" % ( seriesId, self.settings.projectName )
                 else:
                     # record note
                     dbCur.execute( "INSERT INTO %s ( Project, SeriesId, Note ) VALUES ( ?, ?, ? )" % self.settings.dbTblSeriesNotes, ( self.settings.projectName, seriesId, note ) )
