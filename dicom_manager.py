@@ -583,6 +583,12 @@ class DicomManager:
     #--------------------------------------------------------------------------------------------
     def export_dicoms(self, seriesIds, dstRoot, exportFileTree=True):
         
+        # check for series IDs list
+        if not isinstance( seriesIds, list ):
+            print "Error! Must provide a list of series IDs"
+            return
+        
+        # check that series IDs list is not empty
         numIds = len( seriesIds )
         if numIds == 0:
             print "No series IDs provided!"
@@ -683,6 +689,12 @@ class DicomManager:
     #--------------------------------------------------------------------------------------------
     def delete_series(self, seriesIds):
         
+        # check for series IDs list
+        if not isinstance( seriesIds, list ):
+            print "Error! Must provide a list of series IDs"
+            return
+        
+        # check that series IDs list is not empty
         numIds = len( seriesIds )
         if numIds == 0:
             print "No series IDs provided!"
@@ -974,7 +986,12 @@ class DicomManager:
     #--------------------------------------------------------------------------------------------
     def add_series_notes(self, seriesIds, note):
             
-        # check that at least 1 series ID was provided
+        # check for series IDs list
+        if not isinstance( seriesIds, list ):
+            print "Error! Must provide a list of series IDs"
+            return
+        
+        # check that series IDs list is not empty
         numIds = len( seriesIds )
         if numIds == 0:
             print "No series IDs provided!"
@@ -998,6 +1015,11 @@ class DicomManager:
     #--------------------------------------------------------------------------------------------
     def delete_series_notes(self, noteIds):
             
+        # check for series IDs list
+        if not isinstance( noteIds, list ):
+            print "Error! Must provide a list of series IDs"
+            return
+        
         # check that at least 1 series ID was provided
         numIds = len( noteIds )
         if numIds == 0:
