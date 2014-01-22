@@ -521,7 +521,7 @@ class DicomManager:
             dbCur = self.dbCon.cursor()
             dbCur.execute( "SELECT count(*) FROM %s WHERE Project = ? AND SeriesId = ?" % self.settings.dbTblProjectSeries, ( self.settings.projectName, seriesId ) )
             if dbCur.fetchone()[0] == 0:
-                print "Can't delete the series with id %d, because it is not owned by the project %s!" & ( seriesId, self.settings.projectName )
+                print "Can't delete the series with id %d, because it is not owned by the project %s!" % ( seriesId, self.settings.projectName )
                 return
         
         # determine source-series directory
@@ -632,7 +632,7 @@ class DicomManager:
                 dbCur = self.dbCon.cursor()
                 dbCur.execute( "SELECT count(*) FROM %s WHERE Project = ? AND SeriesId = ?" % self.settings.dbTblProjectSeries, ( self.settings.projectName, seriesId ) )
                 if dbCur.fetchone()[0] == 0:
-                    print "Can't delete the series with id %d, because it is not owned by the project %s!" & ( seriesId, self.settings.projectName )
+                    print "Can't delete the series with id %d, because it is not owned by the project %s!" % ( seriesId, self.settings.projectName )
                     return
             
             # normalize institution name
@@ -1034,7 +1034,7 @@ class DicomManager:
                 dbCur = self.dbCon.cursor()
                 dbCur.execute( "SELECT count(*) FROM %s WHERE id = ? AND Project = ?" % self.settings.dbTblSeriesNotes, ( noteId, self.settings.projectName ) )
                 if dbCur.fetchone()[0] == 0:
-                    print "The series note with id %d is not found in the project %s!" & ( noteId, self.settings.projectName )
+                    print "The series note with id %d is not found in the project %s!" % ( noteId, self.settings.projectName )
                 else:
                     # delete note
                     dbCur.execute( "DELETE FROM %s WHERE id = ?" % self.settings.dbTblSeriesNotes, (noteId,) )
