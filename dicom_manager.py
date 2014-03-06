@@ -497,7 +497,7 @@ class DicomManager:
 
     
     #--------------------------------------------------------------------------------------------
-    def export_dicom(self, seriesId, dstRoot, exportFileTree=True):
+    def export_dicom(self, seriesId, dstRoot, exportFileTree=True, ageBreakdown=False):
 
         # make functions local variables for speed
         os_path_exists = os.path.exists
@@ -540,6 +540,26 @@ class DicomManager:
             print "Destination root directory not found: %s" % dstRoot
             return
 
+        #
+        if ageBreakdown:
+            # determine patient age in days at scan time
+            ageInDays = None
+            with self.dbCon:
+                dbCur = self.dbCon.cursor()
+                qAge = "SELECT julianday(substr(StudyDate, 1,4) || '-' || substr(StudyDate,5,2)  || '-' || substr(StudyDate, 7,2)) "
+                        "- julianday(substr(PatientBirthDate, 1,4) || '-' || substr(PatientBirthDate,5,2)  || '-' || substr(PatientBirthDate, 7,2)) "
+                        "FROM %s WHERE id = ? LIMIT 1" % self.settings.dbTblSeries
+                dbCur.execute( qAge, (seriesId,) )
+                ageInDays = dbCur.fetchone()
+                print ageInDays
+                print "Age in days: %d" % ageInDays
+
+            return
+
+            # change destination directory as necessary
+            #dstRoot = os_path_join( dstRoot, )
+
+        #
         seriesDir = None
         if exportFileTree:
             # check if destination-institution directory exists

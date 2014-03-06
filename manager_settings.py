@@ -58,5 +58,6 @@ class ManagerSettings:
         # set the directory for the selected project's data organized by patient
         self.byPatientDir = os.path.join( self.selectedProjectDir, 'by_patient' )
 
-        # set the directory for the selected project's data organized by afe
+        # set the directory for the selected project's data organized by age
         self.byAgeDir = os.path.join( self.selectedProjectDir, 'by_age' )
+
