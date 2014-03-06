@@ -497,7 +497,7 @@ class DicomManager:
 
     
     #--------------------------------------------------------------------------------------------
-    def export_dicom(self, seriesId, dstRoot, exportFileTree=True, ageBreakdown=False):
+    def export_dicom(self, seriesId, dstRoot, ageBreakdown=False, directoryTree=True, keepSeriesSlug=True):
 
         # make functions local variables for speed
         os_path_exists = os.path.exists
@@ -521,7 +521,7 @@ class DicomManager:
             dbCur = self.dbCon.cursor()
             dbCur.execute( "SELECT count(*) FROM %s WHERE Project = ? AND SeriesId = ?" % self.settings.dbTblProjectSeries, ( self.settings.projectName, seriesId ) )
             if dbCur.fetchone()[0] == 0:
-                print "Can't delete the series with id %d, because it is not owned by the project %s!" % ( seriesId, self.settings.projectName )
+                print "Can't delete the series with id %d, because it is not owned by the project %s!" & ( seriesId, self.settings.projectName )
                 return
         
         # determine source-series directory
@@ -540,28 +540,29 @@ class DicomManager:
             print "Destination root directory not found: %s" % dstRoot
             return
 
-        #
+        # option
+        if not keepSeriesSlug:
+            seriesSlug = 'series%d' % seriesId
+
+        # option
         if ageBreakdown:
             # determine patient age in days at scan time
             ageInDays = None
             with self.dbCon:
                 dbCur = self.dbCon.cursor()
-                qAge = "SELECT julianday(substr(StudyDate, 1,4) || '-' || substr(StudyDate,5,2)  || '-' || substr(StudyDate, 7,2)) "
-                        "- julianday(substr(PatientBirthDate, 1,4) || '-' || substr(PatientBirthDate,5,2)  || '-' || substr(PatientBirthDate, 7,2)) "
-                        "FROM %s WHERE id = ? LIMIT 1" % self.settings.dbTblSeries
+                qAge = "SELECT julianday(substr(StudyDate, 1,4) || '-' || substr(StudyDate,5,2)  || '-' || substr(StudyDate, 7,2)) - julianday(substr(PatientBirthDate, 1,4) || '-' || substr(PatientBirthDate,5,2)  || '-' || substr(PatientBirthDate, 7,2)) FROM %s WHERE id = ? LIMIT 1" % self.settings.dbTblSeries
                 dbCur.execute( qAge, (seriesId,) )
-                ageInDays = dbCur.fetchone()
-                print ageInDays
-                print "Age in days: %d" % ageInDays
+                ageInDays = dbCur.fetchone()[0]
+        
+            # determine age range
+            for ageRange in self.settings.ageBreakdown:
+                if ageInDays >= ageRange['minDay'] and ageInDays <= ageRange['maxDay']:
+                    # modify destination directory accordingly
+                    dstRoot = os_path_join(dstRoot, ageRange['name'])
 
-            return
-
-            # change destination directory as necessary
-            #dstRoot = os_path_join( dstRoot, )
-
-        #
+        # option
         seriesDir = None
-        if exportFileTree:
+        if directoryTree:
             # check if destination-institution directory exists
             institutionDir = os_path_join( dstRoot, institutionName )
             if not os_path_exists( institutionDir ):
@@ -589,26 +590,22 @@ class DicomManager:
         else:
             # check that destination-series directory doesn't exist
             seriesDir = os_path_join( dstRoot, seriesSlug )
+            #seriesDir = os_path_join( dstRoot, 'series%d' % seriesId )
             if os_path_exists( seriesDir ):
                 print "Destination series directory already exists, skipping: %s" % seriesDir
                 return
         
 
         # copy source to destination
-        print "||| Series directory '%s' being created..." % seriesSlug
         shutil.copytree( srcSeriesDir, seriesDir )
+        print "||| Series directory '%s' exported..." % seriesSlug
 
 
 
     #--------------------------------------------------------------------------------------------
-    def export_dicoms(self, seriesIds, dstRoot, exportFileTree=True):
+    def export_dicoms(self, seriesIds, dstRoot, ageBreakdown=False, directoryTree=True, keepSeriesSlug=True):
         
-        # check for series IDs list
-        if not isinstance( seriesIds, list ):
-            print "Error! Must provide a list of series IDs"
-            return
-        
-        # check that series IDs list is not empty
+        # check that at least 1 series was provided
         numIds = len( seriesIds )
         if numIds == 0:
             print "No series IDs provided!"
@@ -620,14 +617,14 @@ class DicomManager:
         for sIdx, seriesId in enumerate( seriesIds ):
             
             # export series
-            self.export_dicom( seriesId, dstRoot, exportFileTree )
+            self.export_dicom( seriesId, dstRoot, ageBreakdown, directoryTree, keepSeriesSlug )
             
             # display progress
             writeProgress = ((sIdx * 100) / numIds)
             sys.stdout.write( " Progress: %d%% \r" % writeProgress )
             sys.stdout.flush()
         
-        sys.stdout.write( "                                            \r" )
+        sys.stdout.write( "Done!                                          \r" )
         sys.stdout.flush()
 
 
