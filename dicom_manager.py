@@ -179,11 +179,6 @@ class DicomManager:
             print "Root directory not found. You must create this!"
             return
 
-        # check for import directory
-        if not os.path.exists(self.settings.toImportDir):
-            print "'to_import' directory not found. Creating it..."
-            os.makedirs(self.settings.toImportDir)
-        
         # check for dicom directory
         if not os.path.exists(self.settings.dicomsDir):
             print "'dicom' directory not found. Creating it..."
