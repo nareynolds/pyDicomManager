@@ -15,10 +15,10 @@ M.import_dicom("")
 M.import_dicoms("")
 
 # export a single series by series ID
-M.export_dicom(1, "", exportFileTree=True)
+M.export_dicom(1, "", directoryTree=True)
 
 # export multiple series by series ID
-M.export_dicoms([1,2,3,4,5,...], "", exportFileTree=True)
+M.export_dicoms([1,2,3,4,5,...], "/Volumes/mi2b2/3/Pediatric_Brain_Atlas/processing/reviewing", ageBreakdown=False, directoryTree=True, keepSeriesSlug=True)
 
 # delete a single series by series ID
 M.delete_a_series(1)
