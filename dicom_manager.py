@@ -207,60 +207,54 @@ class DicomManager:
         print "Done!"
 
 
-            
+
     #--------------------------------------------------------------------------------------------
-    def print_patient_ids(self):
+    def strip_non_ascii(self, s):
 
-        # get a list of the patient MRNs associated with the current project
-        ids = None
-        with self.dbCon:
-            dbCur = self.dbCon.cursor()
-            dbCur.execute( "SELECT DISTINCT PatientID FROM %s WHERE id IN (SELECT SeriesID FROM %s WHERE Project = ?)" % (self.settings.dbTblSeries, self.settings.dbTblProjectSeries), (self.settings.projectName,) )
-            qResult = dbCur.fetchall()
-            if qResult is None:
-                print "Error: Couldn't find any patients!"
-                return
-            else:
-                ids = [row[0] for row in qResult]
+        # strip non-unicode characters
+        return "".join(i for i in s if ord(i)<128)
 
-        # print MRNs
-        print "The project '%s' has %d patients:" % ( self.settings.projectName, len(ids) )
-        for id in ids:
-            print "%s" % id
     
-            
-            
     #--------------------------------------------------------------------------------------------
-    def print_accession_numbers(self):
-        
-        # get a list of the patient MRNs associated with the current project
-        ans = None
-        with self.dbCon:
-            dbCur = self.dbCon.cursor()
-            dbCur.execute( "SELECT DISTINCT AccessionNumber FROM %s WHERE id IN (SELECT SeriesID FROM %s WHERE Project = ?)" % (self.settings.dbTblSeries, self.settings.dbTblProjectSeries), (self.settings.projectName,) )
-            qResult = dbCur.fetchall()
-            if qResult is None:
-                print "Error: Couldn't find any accession numbers!"
-                return
-            else:
-                ans = [row[0] for row in qResult]
-        
-        # print MRNs
-        print "The project '%s' has %d accession numbers:" % ( self.settings.projectName, len(ans) )
-        for an in ans:
-            print "%s" % an
+    def strip_special_char(self, s):
 
+        s = s.replace('`','')
+        s = s.replace('~','')
+        s = s.replace('!','')
+        s = s.replace('@','')
+        s = s.replace('#','')
+        s = s.replace('$','')
+        s = s.replace('%','')
+        s = s.replace('^','')
+        s = s.replace('&','')
+        s = s.replace('*','')
+        s = s.replace('(','')
+        s = s.replace(')','')
+        s = s.replace('{','')
+        s = s.replace('}','')
+        s = s.replace('[','')
+        s = s.replace(']','')
+        s = s.replace('|','')
+        s = s.replace('\\','')
+        s = s.replace(':','')
+        s = s.replace(';','')
+        s = s.replace("'",'')
+        s = s.replace('"','')
+        s = s.replace('<','')
+        s = s.replace('>','')
+        s = s.replace(',','')
+        s = s.replace('.','')
+        s = s.replace('?','')
+        s = s.replace('/','')
+        return s
+
+    
 
     #--------------------------------------------------------------------------------------------
-    def normalize_institution_name(self, institutionName):
-        if ('mgh' in institutionName.lower() or
-            'massachusetts general' in institutionName.lower() or
-            'mass general' in institutionName.lower() or
-            'mass. general' in institutionName.lower()
-            ):
-            return 'MGH'
-        else:
-            return institutionName.replace(' ','_')
+    def linux_path_sanitize(self, s):
+
+        return self.strip_special_char( self.strip_non_ascii( s ) ).replace(' ','_')
+
 
 
     #--------------------------------------------------------------------------------------------
@@ -330,8 +324,14 @@ class DicomManager:
                 seriesId = str( dbCur.fetchone()[0] )
                 dbCur.execute( qInsertProjectSeries )
 
-        # normalize institution name for file tree consolidation
-        institutionName = self.normalize_institution_name( dcm.InstitutionName )
+        # adjust some tag values for directory creation
+        institutionName = self.linux_path_sanitize( dcm.InstitutionName )
+        patientId = self.linux_path_sanitize( dcm.PatientID )
+        studyDate = self.linux_path_sanitize( dcm.StudyDate )
+        patientAge = self.linux_path_sanitize( dcm.PatientAge )
+        accessionNumber = self.linux_path_sanitize( dcm.AccessionNumber )
+        studyDescription = self.linux_path_sanitize( dcm.StudyDescription )
+        seriesDescription = self.linux_path_sanitize( dcm.SeriesDescription )
 
         # check if institution directory exists
         institutionDir = os_path_join( self.settings.dicomsDir, institutionName )
@@ -340,20 +340,20 @@ class DicomManager:
             os.makedirs( institutionDir )
 
         # check if patient directory exists
-        patientDir = os_path_join( institutionDir, dcm.PatientID )
+        patientDir = os_path_join( institutionDir, patientId )
         if not os_path_exists( patientDir ):
-            print "| Patient directory '%s' being created..." % dcm.PatientID
+            print "| Patient directory '%s' being created..." % patientId
             os.makedirs( patientDir )
 
         # check if study directory exists
-        studySlug = re.sub( r'[/\\]', '', '_'.join([ dcm.StudyDate, dcm.PatientAge, dcm.AccessionNumber, dcm.StudyDescription ]).replace(' ','_') )
+        studySlug = '_'.join([ studyDate, patientAge, accessionNumber, studyDescription ]).replace(' ','_')
         studyDir = os_path_join( patientDir, studySlug )
         if not os_path_exists( studyDir ):
             print "|| Study directory '%s' being created..." % studySlug
             os.makedirs( studyDir )
 
         # check if series directory exists
-        seriesSlug = re.sub( r'[/\\]', '', '_'.join([ dcm.SeriesDescription, seriesId ]).replace(' ','_') )
+        seriesSlug = '_'.join([ seriesDescription, seriesId ]).replace(' ','_')
         seriesDir = os_path_join( studyDir, seriesSlug )
         if not os_path_exists( seriesDir ):
             print "||| Series directory '%s' being created..." % seriesSlug
@@ -375,7 +375,7 @@ class DicomManager:
         if not os_path_exists( institutionAlias ):
             os.makedirs( institutionAlias )
         
-        patientAlias = os_path_join( institutionAlias, dcm.PatientID )
+        patientAlias = os_path_join( institutionAlias, patientId )
         if not os_path_exists( patientAlias ):
             os.makedirs( patientAlias )
         
@@ -388,7 +388,7 @@ class DicomManager:
             self.mk_alias( seriesDir, seriesAlias )
 
         # create alias in project's 'by_age' directory
-        #age = dcm.PatientAge
+        #age = patientAge
         #if 'D' in age:
         #    age = 'day_%s' % age.strip().replace('D','')
         #elif 'W' in age:
@@ -402,7 +402,7 @@ class DicomManager:
         #if not os_path_exists( ageAlias ):
         #    os.makedirs( ageAlias )
         #
-        #studySlug = re.sub( r'[/\\]', '', '_'.join([ dcm.StudyDate, institutionName, dcm.PatientID, dcm.AccessionNumber, dcm.StudyDescription ]).replace(' ','_') )
+        #studySlug = re.sub( r'[/\\]', '', '_'.join([ studyDate, institutionName, patientId, accessionNumber, dcm.StudyDescription ]).replace(' ','_') )
         #studyAlias = os_path_join( ageAlias, studySlug )
         #if not os_path_exists( studyAlias ):
         #    os.makedirs( studyAlias )
@@ -520,10 +520,16 @@ class DicomManager:
                 return
         
         # determine source-series directory
-        institutionName = self.normalize_institution_name( series['InstitutionName'] )
-        studySlug = re.sub( r'[/\\]', '', '_'.join([ series['StudyDate'], series['PatientAge'], series['AccessionNumber'], series['StudyDescription'] ]).replace(' ','_') )
-        seriesSlug = re.sub( r'[/\\]', '', '_'.join([ series['SeriesDescription'], str(seriesId) ]).replace(' ','_') )
-        srcSeriesDir = os.path.join( self.settings.dicomsDir, institutionName, series['PatientID'], studySlug, seriesSlug )
+        institutionName = self.linux_path_sanitize( series['InstitutionName'] )
+        patientId = self.linux_path_sanitize( series['PatientID'] )
+        studyDate = self.linux_path_sanitize( series['StudyDate'] )
+        patientAge = self.linux_path_sanitize( series['PatientAge'] )
+        accessionNumber = self.linux_path_sanitize( series['AccessionNumber'] )
+        studyDescription = self.linux_path_sanitize( series['StudyDescription'] )
+        seriesDescription = self.linux_path_sanitize( series['SeriesDescription'] )
+        studySlug = '_'.join([ studyDate, patientAge, accessionNumber, studyDescription ]).replace(' ','_')
+        seriesSlug = '_'.join([ seriesDescription, str(seriesId) ]).replace(' ','_')
+        srcSeriesDir = os.path.join( self.settings.dicomsDir, institutionName, patientId, studySlug, seriesSlug )
         
         # check that source-series directory exists
         if not os_path_exists( srcSeriesDir ):
@@ -565,9 +571,9 @@ class DicomManager:
                 os.makedirs( institutionDir )
 
             # check if destination-patient directory exists
-            patientDir = os_path_join( institutionDir, series['PatientID'] )
+            patientDir = os_path_join( institutionDir, patientId )
             if not os_path_exists( patientDir ):
-                print "| Patient directory '%s' being created..." % series['PatientID']
+                print "| Patient directory '%s' being created..." % patientId
                 os.makedirs( patientDir )
 
             # check if destination-study directory exists
@@ -647,11 +653,17 @@ class DicomManager:
                     print "Can't delete the series with id %d, because it is not owned by the project %s!" % ( seriesId, self.settings.projectName )
                     return
             
-            # normalize institution name
-            institutionName = self.normalize_institution_name( series['InstitutionName'] )
+            # modify tags for path search
+            institutionName = self.linux_path_sanitize( series['InstitutionName'] )
+            patientId = self.linux_path_sanitize( series['PatientID'] )
+            studyDate = self.linux_path_sanitize( series['StudyDate'] )
+            patientAge = self.linux_path_sanitize( series['PatientAge'] )
+            accessionNumber = self.linux_path_sanitize( series['AccessionNumber'] )
+            studyDescription = self.linux_path_sanitize( series['StudyDescription'] )
+            seriesDescription = self.linux_path_sanitize( series['SeriesDescription'] )
 
             # delete series alias in 'by_age' tree
-            age = series['PatientAge']
+            age = patientAge
             if 'D' in age:
                 age = 'day_%s' % age.strip().replace('D','')
             elif 'W' in age:
@@ -661,21 +673,21 @@ class DicomManager:
             elif 'Y' in age:
                 age = 'year_%s' % age.strip().replace('Y','')
 
-            studySlug = re.sub( r'[/\\]', '', '_'.join([ series['StudyDate'], institutionName, series['PatientID'], series['AccessionNumber'], series['StudyDescription'] ]).replace(' ','_') )
-            seriesSlug = re.sub( r'[/\\]', '', '_'.join([ series['SeriesDescription'], str(seriesId) ]).replace(' ','_') )
+            studySlug = '_'.join([ studyDate, institutionName, patientId, accessionNumber, studyDescription ]).replace(' ','_')
+            seriesSlug = '_'.join([ seriesDescription, str(seriesId) ]).replace(' ','_')
             byAgeAlias = os.path.join( self.settings.byAgeDir, age, studySlug, seriesSlug )
             if os.path.exists( byAgeAlias ):
                 self.rm_alias( byAgeAlias )
 
             # delete series alias in 'by_patient' tree
-            studySlug = re.sub( r'[/\\]', '', '_'.join([ series['StudyDate'], series['PatientAge'], series['AccessionNumber'], series['StudyDescription'] ]).replace(' ','_') )
-            byPatientAlias = os.path.join( self.settings.byPatientDir, institutionName, series['PatientID'], studySlug, seriesSlug )
+            studySlug = '_'.join([ studyDate, patientAge, accessionNumber, studyDescription ]).replace(' ','_')
+            byPatientAlias = os.path.join( self.settings.byPatientDir, institutionName, patientId, studySlug, seriesSlug )
             if os.path.exists( byPatientAlias ):
                 self.rm_alias( byPatientAlias )
 
 
             # find series dicom directory
-            seriesDir = os.path.join( self.settings.dicomsDir, institutionName, series['PatientID'], studySlug, seriesSlug )
+            seriesDir = os.path.join( self.settings.dicomsDir, institutionName, patientId, studySlug, seriesSlug )
 
             if not os.path.exists( seriesDir ):
                 print "Recorded series directory not found: %s" % seriesDir
@@ -790,11 +802,18 @@ class DicomManager:
         # delete all series associated with the study
         self.delete_series( seriesIds )
 
-        # normalize institution name
-        institutionName = self.normalize_institution_name( series['InstitutionName'] )
+        # modify tags for path search
+        institutionName = self.linux_path_sanitize( repSeries['InstitutionName'] )
+        patientId = self.linux_path_sanitize( repSeries['PatientID'] )
+        studyDate = self.linux_path_sanitize( repSeries['StudyDate'] )
+        patientAge = self.linux_path_sanitize( repSeries['PatientAge'] )
+        accessionNumber = self.linux_path_sanitize( repSeries['AccessionNumber'] )
+        studyDescription = self.linux_path_sanitize( repSeries['StudyDescription'] )
+        seriesDescription = self.linux_path_sanitize( repSeries['SeriesDescription'] )
+
 
         # delete study folder in 'by_age' tree
-        age = repSeries['PatientAge']
+        age = patientAge
         if 'D' in age:
             age = 'day_%s' % age.strip().replace('D','')
         elif 'W' in age:
@@ -804,20 +823,20 @@ class DicomManager:
         elif 'Y' in age:
             age = 'year_%s' % age.strip().replace('Y','')
 
-        studySlug = re.sub( r'[/\\]', '', '_'.join([ repSeries['StudyDate'], institutionName, repSeries['PatientID'], repSeries['AccessionNumber'], repSeries['StudyDescription'] ]).replace(' ','_') )
+        studySlug = '_'.join([ studyDate, institutionName, patientId, accessionNumber, studyDescription ]).replace(' ','_') )
         byAgeStudyDir = os.path.join( self.settings.byAgeDir, age, studySlug )
         if os.path.exists( byAgeStudyDir ):
             os.rmdir( byAgeStudyDir )
     
         # delete study folder in 'by_patient' tree
-        studySlug = re.sub( r'[/\\]', '', '_'.join([ repSeries['StudyDate'], repSeries['PatientAge'], repSeries['AccessionNumber'], repSeries['StudyDescription'] ]).replace(' ','_') )
-        byPatientStudyDir = os.path.join( self.settings.byPatientDir, institutionName, repSeries['PatientID'], studySlug )
+        studySlug = '_'.join([ studyDate, patientAge, accessionNumber, studyDescription ]).replace(' ','_')
+        byPatientStudyDir = os.path.join( self.settings.byPatientDir, institutionName, patientId, studySlug )
         if os.path.exists( byPatientStudyDir ):
             os.rmdir( byPatientStudyDir )
                 
         # find study directory in 'dicoms' tree
         institutionDir = os.path.join( self.settings.dicomsDir, institutionName )
-        patientDir = os.path.join( institutionDir, repSeries['PatientID'] )
+        patientDir = os.path.join( institutionDir, patientId )
         studyDir = os.path.join( patientDir, studySlug )
         if not os.path.exists( studyDir ):
             print "Error: Study directory could not be found: %s" % studyDir
@@ -893,29 +912,6 @@ class DicomManager:
 
             
                 
-    #--------------------------------------------------------------------------------------------
-    def series_subset(self, seriesIds):
-
-        # check that at least 1 series ID was provided
-        numSeries = len( seriesIds )
-        if numSeries < 1:
-            print "Must provide a non-empty list of series IDs!"
-            return
-        
-        # enforce uniqueness of series IDs
-        seriesIds = list(set(seriesIds))
-        
-        # check if series exist in this project
-        series = None
-        with self.dbCon:
-            dbCur = self.dbCon.cursor()
-            dbCur.execute( "SELECT * FROM %s WHERE id IN ( %s )" % ( self.settings.dbTblSeries, ', '.join([ '?' for i in range(numSeries) ]) ), seriesIds )
-            series = dbCur.fetchall()
-            if series is None or len(series) == 0:
-                print "Error: Couldn't find any series!"
-                return
-
-
 
     #--------------------------------------------------------------------------------------------
     def add_wanted_studies(self, accessionNumbers, note):
@@ -1053,12 +1049,6 @@ class DicomManager:
 
 
                     
-    #--------------------------------------------------------------------------------------------
-    def remove_non_ascii(self, s):
-
-        # strip non-unicode characters
-        return "".join(i for i in s if ord(i)<128)
-
     
 
     #--------------------------------------------------------------------------------------------
@@ -1139,6 +1129,50 @@ class DicomManager:
             os.rmdir(rootDir)
         
         return empty
+
+
+
+    #--------------------------------------------------------------------------------------------
+    def print_patient_ids(self):
+
+        # get a list of the patient MRNs associated with the current project
+        ids = None
+        with self.dbCon:
+            dbCur = self.dbCon.cursor()
+            dbCur.execute( "SELECT DISTINCT PatientID FROM %s WHERE id IN (SELECT SeriesID FROM %s WHERE Project = ?)" % (self.settings.dbTblSeries, self.settings.dbTblProjectSeries), (self.settings.projectName,) )
+            qResult = dbCur.fetchall()
+            if qResult is None:
+                print "Error: Couldn't find any patients!"
+                return
+            else:
+                ids = [row[0] for row in qResult]
+
+        # print MRNs
+        print "The project '%s' has %d patients:" % ( self.settings.projectName, len(ids) )
+        for id in ids:
+            print "%s" % id
+    
+            
+            
+    #--------------------------------------------------------------------------------------------
+    def print_accession_numbers(self):
+        
+        # get a list of the patient MRNs associated with the current project
+        ans = None
+        with self.dbCon:
+            dbCur = self.dbCon.cursor()
+            dbCur.execute( "SELECT DISTINCT AccessionNumber FROM %s WHERE id IN (SELECT SeriesID FROM %s WHERE Project = ?)" % (self.settings.dbTblSeries, self.settings.dbTblProjectSeries), (self.settings.projectName,) )
+            qResult = dbCur.fetchall()
+            if qResult is None:
+                print "Error: Couldn't find any accession numbers!"
+                return
+            else:
+                ans = [row[0] for row in qResult]
+        
+        # print MRNs
+        print "The project '%s' has %d accession numbers:" % ( self.settings.projectName, len(ans) )
+        for an in ans:
+            print "%s" % an
 
 
 
