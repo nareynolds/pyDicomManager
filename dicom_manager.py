@@ -823,7 +823,7 @@ class DicomManager:
         elif 'Y' in age:
             age = 'year_%s' % age.strip().replace('Y','')
 
-        studySlug = '_'.join([ studyDate, institutionName, patientId, accessionNumber, studyDescription ]).replace(' ','_') )
+        studySlug = '_'.join([ studyDate, institutionName, patientId, accessionNumber, studyDescription ]).replace(' ','_')
         byAgeStudyDir = os.path.join( self.settings.byAgeDir, age, studySlug )
         if os.path.exists( byAgeStudyDir ):
             os.rmdir( byAgeStudyDir )
