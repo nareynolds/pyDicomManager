@@ -1,63 +1,5 @@
 # dicom_manager.py
 
-'''
-*****************************************************
-Example use:
-
-# instantiate
-from dicom_manager import *
-M = DicomManager()
-
-# import a single dicom file
-M.import_dicom("")
-
-# import all dicoms under given directory
-M.import_dicoms("")
-
-# export a single series by series ID
-M.export_dicom(1, "", directoryTree=True)
-
-# export multiple series by series ID
-M.export_dicoms([1,2,3,4,5,...], "/Volumes/mi2b2/3/Pediatric_Brain_Atlas/processing/reviewing", ageBreakdown=False, directoryTree=True, keepSeriesSlug=True)
-
-# delete a single series by series ID
-M.delete_a_series(1)
-
-# delete multiple series by series ID
-M.delete_series([1,2,3,4,5,...])
-    
-# delete study by accession number
-M.delete_study('11340432')
-
-# delete patient by institution and MRN
-M.delete_patient('MGH', '2853644')
-
-# print patient MRNs
-M.print_patient_ids()
-    
-# print study accession numbers
-M.print_accession_numbers()
-    
-# add accession numbers of wanted studies
-M.add_wanted_studies( ['12345', '67890'], "note")
-    
-# print wanted studies
-M.print_wanted_studies()
-
-# print wanted studies you don't have
-M.print_studies_to_get()
-
-# record note for multiple series
-M.add_series_notes([1,2,3,...], "note")
-    
-# delete multiple series notes by note id
-M.delete_series_notes([1,2,3,...]):
-    
-*****************************************************
-'''
-
-
-
 
 # add working directory to search path
 import os
@@ -76,11 +18,8 @@ import sqlite3
 import dicom
 from dicom._dicom_dict import DicomDictionary
 
-# get list of dicom header tags to import into sqlite db: dcm_HOI
-from dicom_hoi import *
-
 # get settings
-from manager_settings import *
+import dicommanagersettings as settings
 
 
 
@@ -89,13 +28,15 @@ from manager_settings import *
 class DicomManager:
     
     #--------------------------------------------------------------------------------------------
-    def __init__(self):
-        self.settings = ManagerSettings()
-        self.setup()
+    def __init__(self, init=True):
+
+        if init:
+            self.settings = settings.DicomManagerSettings()
+            self.init()
 
     
     #--------------------------------------------------------------------------------------------
-    def setup(self):
+    def init(self):
         
         print "Setting up the Dicom Manager..."
         
@@ -120,7 +61,7 @@ class DicomManager:
         if qResult is None:
             # series table doesn't exist - create table in database
             print "Database table '%s' not found. Creating it..." % self.settings.dbTblSeries
-            dcmHeaderNames = [ DicomDictionary[dcmHeaderKey][4] for dcmHeaderKey in dcm_HOI ]
+            dcmHeaderNames = [ DicomDictionary[dcmHeaderKey][4] for dcmHeaderKey in self.settings.tagsToRecord ]
             qCreate = "CREATE TABLE " + self.settings.dbTblSeries + " ( id INTEGER PRIMARY KEY, NumberOfDicoms INTEGER DEFAULT 0 NOT NULL, " +  ' TEXT, '.join(dcmHeaderNames) + " TEXT )"
             with self.dbCon:
                 dbCur = self.dbCon.cursor()
@@ -209,207 +150,418 @@ class DicomManager:
 
 
     #--------------------------------------------------------------------------------------------
-    def strip_non_ascii(self, s):
+    def find (self, dir, recursive=True):
+        #Function takes in dir of dicom files
+        dicoms=[]
 
-        # strip non-unicode characters
-        return "".join(i for i in s if ord(i)<128)
-
-    
-    #--------------------------------------------------------------------------------------------
-    def strip_special_char(self, s):
-
-        s = s.replace('`','')
-        s = s.replace('~','')
-        s = s.replace('!','')
-        s = s.replace('@','')
-        s = s.replace('#','')
-        s = s.replace('$','')
-        s = s.replace('%','')
-        s = s.replace('^','')
-        s = s.replace('&','')
-        s = s.replace('*','')
-        s = s.replace('(','')
-        s = s.replace(')','')
-        s = s.replace('{','')
-        s = s.replace('}','')
-        s = s.replace('[','')
-        s = s.replace(']','')
-        s = s.replace('|','')
-        s = s.replace('\\','')
-        s = s.replace(':','')
-        s = s.replace(';','')
-        s = s.replace("'",'')
-        s = s.replace('"','')
-        s = s.replace('<','')
-        s = s.replace('>','')
-        s = s.replace(',','')
-        s = s.replace('.','')
-        s = s.replace('?','')
-        s = s.replace('/','')
-        return s
-
-    
-
-    #--------------------------------------------------------------------------------------------
-    def linux_path_sanitize(self, s):
-
-        return self.strip_special_char( self.strip_non_ascii( s ) ).replace(' ','_')
-
-
-
-    #--------------------------------------------------------------------------------------------
-    def import_dicom(self, dcmPath):
-        
-        # make functions local variables for speed
-        os_path_exists = os.path.exists
+        # make local refs for speed
         os_path_join = os.path.join
+        os_path_isfile = os.path.isfile
+        os_path_isdir = os.path.isdir
+
+        # progress
+        sys.stdout.write( " Searching...\r" )
+        sys.stdout.flush()
+
+        # loop through directory listings
+        for listing in os.listdir(dir):
+
+            # get full path of listing
+            fullPath = os_path_join(dir, listing)
+
+            # check if listing is a file
+            if os_path_isfile(fullPath):
+
+                # check if listing is DICOM
+                if listing.endswith(('.dcm', '.dicom')):
+
+                    # adds it to the dicoms list
+                    dicoms.append(fullPath)
+
+            # check if should search subdirectories
+            if recursive:
+
+                # check if listing is a directory
+                if os_path_isdir(fullPath):
+
+                    # recursive call to search subdirectory
+                    dicoms.extend( self.find(fullPath, True) )
+
+        # progress
+        sys.stdout.write( "                   \r" )
+        sys.stdout.flush()
+
+        return dicoms
+        
+
+
+    #--------------------------------------------------------------------------------------------
+    def read( self, dcmPath ):
         
         # check that the dicom exists
-        if not os_path_exists(dcmPath):
+        if not os.path.isfile(dcmPath):
             print "Dicom not found: %s" % dcmPath
             return
 
         # read dicom file
-        dcm = dicom.read_file(dcmPath)
-    
-        # check that dicom has necessary fields
-        if ('InstitutionName' not in dcm or
-            'PatientID' not in dcm or
-            'StudyDate' not in dcm or
-            'PatientAge' not in dcm or
-            'AccessionNumber' not in dcm or
-            'StudyDescription' not in dcm or
-            'SeriesDescription' not in dcm
-        ):
-            print "Dicom doesn't have one of the required tags: %s" % dcmPath
-            return
+        dcm = None
+        try:
+            dcm = dicom.read_file(dcmPath)
+        except Exception, e:
+            print repr(e)
+            print "DICOM could not be read: %s" % dcmPath
+            return None
 
-        # get available header values and associated column names
+        # check if DICOM has require tags
+        if (0x00100020 not in dcm) or (not dcm.PatientID):
+            print "DICOM doesn't have PatientID. Refusing to read: %s" % dcmPath
+            return None
+
+        if (0x00080050 not in dcm) or (not dcm.AccessionNumber):
+            print "DICOM doesn't have AccessionNumber. Refusing to read: %s" % dcmPath
+            return None
+
+        if (0x0020000e not in dcm) or (not dcm.SeriesInstanceUID):
+            print "DICOM doesn't have SeriesInstanceUID. Refusing to read: %s" % dcmPath
+            return None
+
+        if (0x00080018 not in dcm) or (not dcm.SOPInstanceUID):
+            print "DICOM doesn't have SOPInstanceUID. Refusing to read: %s" % dcmPath
+            return None
+
+        # sanitize
+        dcm = self.sanitize(dcm)
+
+        # save DICOM source path
+        dcm.path = dcmPath
+
+        return dcm
+
+
+
+    #--------------------------------------------------------------------------------------------
+    def sanitize( self, dcm ):
+
+        # loop through DICOM tags we intend to record
+        for dcmHeaderTag in self.settings.tagsToRecord:
+
+            # check if tag is present
+            if dcmHeaderTag in dcm:
+
+                # enforce single ascii string without quotes
+                dcm[dcmHeaderTag].value = "".join(i for i in ( str(dcm[dcmHeaderTag].value) ) if ord(i)<128)
+                
+        return dcm
+
+
+
+    #--------------------------------------------------------------------------------------------
+    # Creates storage directory for DICOM file based on its tags (i.e institution, demographics, etc.)
+    def storage_path( self, dcm ):
+
+        os_path_join = os.path.join
+
+        # Checks if DICOM has values in each of the following tags. For certain tags, values are required so 'none' is returned. 
+        if 0x00181000 in dcm:
+            modality = dcm.Modality.replace('/','')
+        else:
+            modality = 'Unknown'
+
+        if 0x00080080 in dcm:
+            institutionName = dcm.InstitutionName.replace('/','')
+        else:
+            institutionName = 'Unknown'
+        
+        if 0x00080070 in dcm:
+            manufacturer = dcm.Manufacturer.replace('/','')
+        else:
+            manufacturer = 'Unknown'
+
+        if 0x00081090 in dcm:
+            model = dcm.ManufacturersModelName.replace('/','')
+        else:
+            model = 'Unknown'
+        
+        if 0x00181000 in dcm:
+            deviceSerialNumber = dcm.DeviceSerialNumber.replace('/','')
+        else:
+            deviceSerialNumber = 'Unknown'
+        
+        if 0x00100020 in dcm:
+            patientId = dcm.PatientID.replace('/','')
+        else:
+            print "DICOM doesn't have PatientID. Can't generate storage path: %s" % dcm.path
+            return None
+        
+        if 0x00100010 in dcm:
+            patientName = dcm.PatientName.replace('/','')
+        else:
+            patientName = 'Unknown'
+        
+        if 0x00100040 in dcm:
+            patientSex = dcm.PatientSex.replace('/','')
+        else:
+            patientSex = 'Unknown'
+        
+        if 0x00101010 in dcm:
+            patientAge = dcm.PatientAge.replace('/','')
+        else:
+            patientAge = 'Unknown'
+        
+        if 0x00080020 in dcm:
+            studyDate = dcm.StudyDate.replace('/','')
+        else:
+            studyDate = 'Unknown'
+        
+        if 0x00080050 in dcm:
+            accessionNumber = dcm.AccessionNumber.replace('/','')
+        else:
+            print "DICOM doesn't have AccessionNumber. Can't generate storage path: %s" % dcm.path
+            return None
+        
+        if 0x00081030 in dcm:
+            studyDescription = dcm.StudyDescription.replace('/','')
+        else:
+            studyDescription = 'Unknown'
+        
+        if 0x0020000e in dcm:
+            seriesUID = dcm.SeriesInstanceUID.replace('/','')
+        else:
+            print "DICOM doesn't have SeriesInstanceUID. Can't generate storage path: %s" % dcm.path
+            return None
+        
+        if 0x00181030 in dcm:
+            seriesProtocol = dcm.ProtocolName.replace('/','')
+        else:
+            seriesProtocol = 'Unknown'
+        
+        if 0x0008103e in dcm:
+            seriesDescription = dcm.SeriesDescription.replace('/','')
+        else:
+            seriesDescription = 'Unknown'
+        
+        if 0x00080018 in dcm:
+            imageUID = dcm.SOPInstanceUID.replace('/','')
+        else:
+            print "DICOM doesn't have SOPInstanceUID. Can't generate storage path: %s" % dcm.path
+            return None
+        
+        # Creates names for level of the file tree hierarchy (i.e ..., study, series, image)
+        scannerSlug = '_'.join([ manufacturer, model, deviceSerialNumber ]).replace(' ','_')
+        patientSlug = '_'.join([ patientId, patientName, patientSex ]).replace(' ','_')
+        studySlug = '_'.join([ studyDate, patientAge, accessionNumber, studyDescription ]).replace(' ','_')
+        seriesSlug = '_'.join([ seriesDescription, seriesProtocol, seriesUID ]).replace(' ','_')
+
+        # Creates path beginning with default starting point
+        modaliltyDir = os_path_join( self.settings.dicomsDir, modality.lower() )
+        institutionDir = os_path_join( modaliltyDir, institutionName.lower() )
+        scannerDir = os_path_join( institutionDir, scannerSlug.lower() )
+        patientDir = os_path_join( scannerDir, patientSlug.lower() )
+        studyDir = os_path_join( patientDir, studySlug.lower() )
+        seriesDir = os_path_join( studyDir, seriesSlug.lower() )
+        dcmPath = os_path_join( seriesDir, '%s.dcm' % imageUID.lower() )
+
+        # sanitize path for unix-based systems
+        dcmPath = self.sanitize_unix_path(dcmPath)
+
+        return dcmPath
+
+
+
+    #--------------------------------------------------------------------------------------------
+    # Replace (sanitize) all special charachters in a path.
+    def sanitize_unix_path( self, path ):
+             
+        path = path.replace('`','') \
+                .replace('~','') \
+                .replace('!','') \
+                .replace('@','') \
+                .replace('#','') \
+                .replace('$','') \
+                .replace('%','') \
+                .replace('^','') \
+                .replace('&','') \
+                .replace('*','') \
+                .replace('(','') \
+                .replace(')','') \
+                .replace('{','') \
+                .replace('}','') \
+                .replace('[','') \
+                .replace(']','') \
+                .replace('|','') \
+                .replace('\\','') \
+                .replace(':','') \
+                .replace(';','') \
+                .replace("'",'') \
+                .replace('"','') \
+                .replace('<','') \
+                .replace('>','') \
+                .replace(',','') \
+                .replace('?','') \
+                .replace(' ','_')
+        return path
+
+
+
+    #--------------------------------------------------------------------------------------------
+    # Moves DICOM from original location to managed file tree.  
+    def store( self, dcm ):
+        dcmPath = dcm.path
+
+        # check that the dicom exists
+        if not os.path.isfile(dcmPath):
+            print "Dicom not found: %s" % dcmPath
+            return None
+
+        # determine where to store the DICOM
+        storeDst = self.storage_path(dcm)
+        if storeDst == None:
+            print "Couldn't store DICOM: %s" % dcmPath
+            return None
+        storeDir = os.path.dirname(storeDst)
+
+        # check if directory exists
+        if not os.path.isdir(storeDir):
+
+            # create storage directory
+            os.makedirs(storeDir)
+
+        # check if file exists
+        if not os.path.isfile(storeDst):
+    
+            # copy file to new destination
+            try:
+                shutil.copyfile(dcmPath, storeDst)
+            except Exception, e:
+                print repr(e)
+                print "Failed to store DICOM: %s" % dcmPath
+                return None
+
+            # return storage destination
+            return storeDst
+
+        else:
+
+            # return nothing
+            return None
+
+
+
+
+    #--------------------------------------------------------------------------------------------
+    def record( self, dcm ):
+        
+        seriesId = None
         cols = []
         vals = []
-        for dcmHeaderKey in dcm_HOI:
-            if dcmHeaderKey in dcm:
-                # enforce single ascii string without quotes
-                dcm[dcmHeaderKey].value = "".join(i for i in ( str(dcm[dcmHeaderKey].value).replace('\'','').replace('"','') ) if ord(i)<128)
-                
-                # collect column names and values for database entry
-                cols.append( DicomDictionary[dcmHeaderKey][4] )
-                vals.append( dcm[dcmHeaderKey].value )
 
-        seriesId = None
+        # collect column names and values for database entry
+        for dcmHeaderTag in self.settings.tagsToRecord:
+            if dcmHeaderTag in dcm:
+                cols.append( DicomDictionary[dcmHeaderTag][4] )
+                vals.append( dcm[dcmHeaderTag].value )
+
+        # begin databse transaction
         with self.dbCon:
             dbCur = self.dbCon.cursor()
             
-            # check if this series is already recorded in database
-            qCheck = "SELECT id FROM %s WHERE %s LIMIT 1" % (self.settings.dbTblSeries, ' AND '.join([ col + ' = ?' for col in cols ]))
-            dbCur.execute( qCheck, vals )
-            qResult = dbCur.fetchone()
-
-            if qResult is not None:
-                # series already in database, check if series is owned by current project
-                seriesId = str( qResult[0] )
-                dbCur.execute( "SELECT count(*) FROM %s WHERE Project = ? AND SeriesId = ? LIMIT 1" % self.settings.dbTblProjectSeries, ( self.settings.projectName, seriesId ) )
+            # try
+            try:
+                # check if this series is already recorded in database
+                qCheck = "SELECT id, SeriesInstanceUID FROM %s WHERE SeriesInstanceUID = ? LIMIT 1" % self.settings.dbTblSeries
+                dbCur.execute( qCheck, (dcm.SeriesInstanceUID,) )
                 qResult = dbCur.fetchone()
-                if qResult[0] == 0:
-                    # study not owned by current project - add it
-                    dbCur.execute( "INSERT INTO %s ( Project, SeriesId ) VALUES ( ?, ? )" % self.settings.dbTblProjectSeries, ( self.settings.projectName, seriesId ) )
-        
-            else:
-                # series not in database - add it
-                qInsertSeries = "INSERT INTO %s ( %s ) VALUES ( %s )" % ( self.settings.dbTblSeries, ', '.join(cols), ', '.join([ '?' for i in xrange(len(vals)) ]) )
-                qSeriesLastInsertId = "SELECT last_insert_rowid()"
-                qInsertProjectSeries = "INSERT INTO %s ( Project, SeriesId ) VALUES ( '%s', last_insert_rowid() )" % ( self.settings.dbTblProjectSeries, self.settings.projectName )
-                dbCur.execute( qInsertSeries, vals)
-                dbCur.execute( qSeriesLastInsertId )
-                seriesId = str( dbCur.fetchone()[0] )
-                dbCur.execute( qInsertProjectSeries )
 
-        # adjust some tag values for directory creation
-        institutionName = self.linux_path_sanitize( dcm.InstitutionName )
-        patientId = self.linux_path_sanitize( dcm.PatientID )
-        studyDate = self.linux_path_sanitize( dcm.StudyDate )
-        patientAge = self.linux_path_sanitize( dcm.PatientAge )
-        accessionNumber = self.linux_path_sanitize( dcm.AccessionNumber )
-        studyDescription = self.linux_path_sanitize( dcm.StudyDescription )
-        seriesDescription = self.linux_path_sanitize( dcm.SeriesDescription )
-
-        # check if institution directory exists
-        institutionDir = os_path_join( self.settings.dicomsDir, institutionName )
-        if not os_path_exists( institutionDir ):
-            print "Institution directory '%s' being created..." % institutionName
-            os.makedirs( institutionDir )
-
-        # check if patient directory exists
-        patientDir = os_path_join( institutionDir, patientId )
-        if not os_path_exists( patientDir ):
-            print "| Patient directory '%s' being created..." % patientId
-            os.makedirs( patientDir )
-
-        # check if study directory exists
-        studySlug = '_'.join([ studyDate, patientAge, accessionNumber, studyDescription ]).replace(' ','_')
-        studyDir = os_path_join( patientDir, studySlug )
-        if not os_path_exists( studyDir ):
-            print "|| Study directory '%s' being created..." % studySlug
-            os.makedirs( studyDir )
-
-        # check if series directory exists
-        seriesSlug = '_'.join([ seriesDescription, seriesId ]).replace(' ','_')
-        seriesDir = os_path_join( studyDir, seriesSlug )
-        if not os_path_exists( seriesDir ):
-            print "||| Series directory '%s' being created..." % seriesSlug
-            os.makedirs( seriesDir )
-
-        # check if dicom has been filed already
-        dcmDst = os_path_join( seriesDir,  os.path.basename( dcmPath ) )
-        if not os_path_exists( dcmDst ):
-            # copy dicom to manager file tree
-            shutil.copyfile(dcmPath, dcmDst)
+                if qResult is not None:
+                    # series already in database, check if series is owned by current project
+                    seriesId = str( qResult[0] )
+                    dbCur.execute( "SELECT count(*) FROM %s WHERE Project = ? AND SeriesId = ? LIMIT 1" % self.settings.dbTblProjectSeries, ( self.settings.projectName, seriesId ) )
+                    qResult = dbCur.fetchone()
+                    if qResult[0] == 0:
+                        # study not owned by current project - add it
+                        dbCur.execute( "INSERT INTO %s ( Project, SeriesId ) VALUES ( ?, ? )" % self.settings.dbTblProjectSeries, ( self.settings.projectName, seriesId ) )
             
-            # increment NumberOfDicoms field in database
-            with self.dbCon:
-                dbCur = self.dbCon.cursor()
-                dbCur.execute( "UPDATE %s SET NumberOfDicoms = NumberOfDicoms + 1 WHERE id = %s" % ( self.settings.dbTblSeries, seriesId ) )
+                else:
+                    # series not in database - add it
+                    qInsertSeries = "INSERT INTO %s ( %s ) VALUES ( %s )" % ( self.settings.dbTblSeries, ', '.join(cols), ', '.join([ '?' for i in xrange(len(vals)) ]) )
+                    qSeriesLastInsertId = "SELECT last_insert_rowid()"
+                    qInsertProjectSeries = "INSERT INTO %s ( Project, SeriesId ) VALUES ( '%s', last_insert_rowid() )" % ( self.settings.dbTblProjectSeries, self.settings.projectName )
+                    dbCur.execute( qInsertSeries, vals)
+                    dbCur.execute( qSeriesLastInsertId )
+                    seriesId = str( dbCur.fetchone()[0] )
+                    dbCur.execute( qInsertProjectSeries )
 
-        # create alias in project's 'by_patient' directory
-        institutionAlias = os_path_join( self.settings.byPatientDir, institutionName )
-        if not os_path_exists( institutionAlias ):
-            os.makedirs( institutionAlias )
+            # catch
+            except Exception, e:
+                print repr(e)
+                print "DICOM could not be recorded: %s" % dcm.path
+                return None
         
-        patientAlias = os_path_join( institutionAlias, patientId )
-        if not os_path_exists( patientAlias ):
-            os.makedirs( patientAlias )
+        return seriesId
         
-        studyAlias = os_path_join( patientAlias, studySlug )
-        if not os_path_exists( studyAlias ):
-            os.makedirs( studyAlias )
-        
-        seriesAlias = os_path_join( studyAlias, seriesSlug )
-        if not os_path_exists( seriesAlias ):
-            self.mk_alias( seriesDir, seriesAlias )
 
-        # create alias in project's 'by_age' directory
-        #age = patientAge
-        #if 'D' in age:
-        #    age = 'day_%s' % age.strip().replace('D','')
-        #elif 'W' in age:
-        #    age = 'week_%s' % age.strip().replace('W','')
-        #elif 'M' in age:
-        #    age = 'month_%s' % age.strip().replace('M','')
-        #elif 'Y' in age:
-        #    age = 'year_%s' % age.strip().replace('Y','')
-        #
-        #ageAlias = os_path_join( self.settings.byAgeDir, age )
-        #if not os_path_exists( ageAlias ):
-        #    os.makedirs( ageAlias )
-        #
-        #studySlug = re.sub( r'[/\\]', '', '_'.join([ studyDate, institutionName, patientId, accessionNumber, dcm.StudyDescription ]).replace(' ','_') )
-        #studyAlias = os_path_join( ageAlias, studySlug )
-        #if not os_path_exists( studyAlias ):
-        #    os.makedirs( studyAlias )
-        #
-        #seriesAlias = os_path_join( studyAlias, seriesSlug )
-        #if not os_path_exists( seriesAlias ):
-        #    self.mk_alias( seriesDir, seriesAlias )
+
+    #--------------------------------------------------------------------------------------------
+    def manage( self, dcmPaths, deleteDcm=False, recordDcm=True, storeDcm=True ):
+    
+        # check if multiple DICOM paths are provided
+        if isinstance(dcmPaths, list):
+
+            numPaths = len( dcmPaths )
+            writeProgress = 0
+            for dcmIdx, dcmPath in enumerate( dcmPaths ):
+
+                # recursive call to manage each DICOM
+                self.manage(dcmPath, deleteDcm, recordDcm, storeDcm)
+
+                # display progress
+                writeProgress = ((dcmIdx * 100) / numPaths)
+                sys.stdout.write( " Progress: %d%% \r" % writeProgress )
+                sys.stdout.flush()
+
+            # progress
+            sys.stdout.write( "                         \r" )
+            sys.stdout.flush()
+
+        # check for single DICOM path
+        elif isinstance(dcmPaths, basestring):
+            dcmPath = dcmPaths
+
+            # read DICOM
+            dcm = self.read(dcmPath)
+            if dcm == None:
+                print "Couldn't read. Unable to manage DICOM: %s" % dcmPath
+                return None
+
+            if recordDcm:
+                # record DICOM in DB
+                seriesId = self.record(dcm)
+                if seriesId == None:
+                    print "Couldn't record. Unable to manage DICOM: %s" % dcmPath
+                    return None
+
+            if storeDcm:
+                # store DICOM in managed file tree
+                dstPath = self.store(dcm)
+                if dstPath == None:
+                    print "Couldn't store. Unable to manage DICOM: %s" % dcmPath
+                    return None
+
+            if deleteDcm:
+                # delete source DICOM
+                os.remove(dcmPath)
+        
+        
+
+
+
+
+
+
+
+
+
+
 
 
     #--------------------------------------------------------------------------------------------
