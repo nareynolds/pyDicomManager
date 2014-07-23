@@ -1,57 +1,82 @@
 # examples.py
 
 '''
-*****************************************************
-Example use:
+
+'''
 
 # instantiate
 import dicommanager
 M = dicommanager.DicomManager()
 
-# import a single dicom file
-M.import_dicom("")
 
-# import all dicoms under given directory
-M.import_dicoms("")
+# find DICOMs to manage
+dcmDir = '/path/to/directory/of/dicoms'
+dcmPaths = M.find( dcmDir, recursive=True )
+dcmPath = dcmPaths[0]
 
-# export a single series by series ID
-M.export_dicom(1, "", directoryTree=True)
 
-# export multiple series by series ID
-M.export_dicoms([1,2,3,4,5,...], "/Volumes/mi2b2/3/Pediatric_Brain_Atlas/processing/reviewing", ageBreakdown=False, directoryTree=True, keepSeriesSlug=True)
+# read DICOM into object
+dcm = M.read( dcmPath )
 
-# delete a single series by series ID
-M.delete_a_series(1)
 
-# delete multiple series by series ID
-M.delete_series([1,2,3,4,5,...])
-    
-# delete study by accession number
-M.delete_study('11340432')
+# record DICOM series data in SQLite database
+M.record( dcm )
 
-# delete patient by institution and MRN
-M.delete_patient('MGH', '2853644')
 
-# print patient MRNs
-M.print_patient_ids()
-    
-# print study accession numbers
-M.print_accession_numbers()
-    
-# add accession numbers of wanted studies
-M.add_wanted_studies( ['12345', '67890'], "note")
-    
-# print wanted studies
-M.print_wanted_studies()
+# store DICOM in managed file tree
+M.store( dcm )
 
-# print wanted studies you don't have
-M.print_studies_to_get()
 
-# record note for multiple series
-M.add_series_notes([1,2,3,...], "note")
-    
-# delete multiple series notes by note id
-M.delete_series_notes([1,2,3,...]):
-    
-*****************************************************
-'''
+# manage DICOMs
+M.manage( dcmPaths=dcmPaths, deleteDcm=False, recordDcm=True, storeDcm=True )
+
+
+# get a manageed series' record from the database (various args)
+M.getSeriesRecord( recordID=1 )
+M.getSeriesRecord( seriesUID="1.2.840.113619.2.135.2025.2073408.4720.1102388196.443" )
+M.getSeriesRecord( accessionNumber=1234567 )
+M.getSeriesRecord( accessionNumber="1234567" )
+M.getSeriesRecord( patientID=7654321 )
+M.getSeriesRecord( patientID="7654321" )
+
+
+# get the path to a managed series' storage location (various args)
+M.getSeriesDir( recordID=1 )
+M.getSeriesDir( seriesUID="1.2.840.113619.2.135.2025.2073408.4720.1102388196.443" )
+M.getSeriesDir( accessionNumber=1234567 )
+M.getSeriesDir( accessionNumber="1234567" )
+M.getSeriesDir( patientID=7654321 )
+M.getSeriesDir( patientID="7654321" )
+
+
+# copy selected managed DICOMs to another location
+recordIDs = [1,2,3,4,5,6,7,8,9]
+dstRoot = "/some/other/location"
+M.export( recordIDs=recordIDs, dstRoot=dstRoot, ageBreakdown=False, directoryTree=True, readableSeriesSlug=True )
+
+
+# delete a DICOM series from the manager using the record ID
+M.delete( 1 )
+
+
+# delete multiple DICOM series from the manager using the record ID
+M.delete( [1,2,3,4,5] )
+
+
+# record note about multiple series
+seriesInstanceUIDs = [
+"1.2.840.113619.2.135.2025.2073408.4720.1102388196.443",
+"1.2.840.113619.2.135.2025.2073408.4720.1102388196.530",
+"1.2.840.113619.2.135.2025.2073408.4720.1102388196.622",
+"1.2.840.113619.2.135.2025.2073408.4720.1102388196.877",
+"1.2.840.113619.2.135.2025.2073408.4720.1102388196.970"
+]
+note = "#greatscan #3D #T1"
+M.note( seriesInstanceUIDs, note )
+
+
+# delete series notes 
+M.delete_notes( [1,2,3,4,5] )
+
+
+

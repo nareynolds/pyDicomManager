@@ -11,51 +11,32 @@ class DicomManagerSettings:
 
     def __init__(self):
 
+        # get directory of this file
+        selfDir = os.path.dirname(os.path.realpath(__file__))
+
         # set the directory where to save the SQLite database used for management
-        self.dbDir = os.path.dirname(os.path.realpath(__file__))
+        self.dbDir = selfDir
         if not self.dbDir:
             self.dbDir = raw_input("Enter the path where sqlite database is to be saved: ").strip().replace('\\','')
         
         # set the path to this management SQLite database
-        self.dbPath = os.path.join( self.dbDir, 'dicommanager.sqlite' )
+        dbName = 'dicommanager.sqlite'
+        self.dbPath = os.path.join( self.dbDir, dbName )
     
         # set name of database table in which the dicom series' data are saved
         self.dbTblSeries = 'Series'
                 
-        # set name of database table in which the project's series ownerships are saved
-        self.dbTblProjectSeries = 'ProjectSeries'
-
-        # set name of database table in which a project's desired dicom series' data are saved
-        self.dbTblWantedStudies = 'WantedStudies'
-    
         # set name of database table in which the series' notes are saved
-        self.dbTblSeriesNotes = 'SeriesNotes'
+        self.dbTblSeriesNotes = 'Notes'
     
-        # set the root directory of where all dicom data will be stored and managed
-        self.rootDir = '/Users/nathanielreynolds/Documents/python/pyDicomManager/testing'
+        # set the root directory of DICOM storage
+        self.rootDir = os.path.join( selfDir, 'testing' )
         if not self.rootDir:
             self.rootDir = raw_input("Enter the root directory where dicoms are to be stored and managed: ").strip().replace('\\','')
     
         # set the directory where the dicoms are acutally written
-        self.dicomsDir = os.path.join( self.rootDir, 'dicoms' )
+        self.dicomDir = os.path.join( self.rootDir, 'DICOM' )
                 
-        # set the root directory where all projects' organized aliases will be
-        self.projectsDir = os.path.join( self.rootDir, 'projects' )
-                
-        # set the name of the project to manage (used to find and create files)
-        self.projectName = 'anotherProject'
-        if not self.projectName:
-            self.projectName = raw_input("Enter the name of the project you want to manage: ").strip()
-                
-        # set the directory for the selected project's organized data
-        self.selectedProjectDir = os.path.join( self.projectsDir, self.projectName )
-    
-        # set the directory for the selected project's data organized by patient
-        self.byPatientDir = os.path.join( self.selectedProjectDir, 'by_patient' )
-
-        # set the directory for the selected project's data organized by age
-        self.byAgeDir = os.path.join( self.selectedProjectDir, 'by_age' )
-
         # set ranges for age breakdown
         self.ageBreakdown = [
             {
@@ -242,7 +223,27 @@ class DicomManagerSettings:
                 'minDay': 1825,
                 'maxDay': 2190,
                 'name': 'day1825-2190_month60-71_year5'
-            }
+            },
+            {
+                'minDay': 2191,
+                'maxDay': 3650,
+                'name': 'day2191-3650_month72-120_year6-10'
+            },
+            {
+                'minDay': 3651,
+                'maxDay': 18250,
+                'name': 'day3651-18250_month121-600_year11-50'
+            },
+            {
+                'minDay': 18251,
+                'maxDay': 36500,
+                'name': 'day18251-36500_month601-1200_year51-100'
+            },
+            {
+                'minDay': 36501,
+                'maxDay': 1000000,
+                'name': 'day36501-up_month1200-up_year100-up'
+            },
         ]
 
         # list of all the dicom tags that will be recorded in the SQLite database
