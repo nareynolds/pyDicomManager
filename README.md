@@ -18,5 +18,7 @@ Some settings, such as the location of managed filetree, can be set in the file 
 The default location of the SQLite database is in this directory.
 The default location of the managed filetree is in "data/DICOM".
 An example of the filetree structure can be seen in "data/DICOM_example_filetree".
+The python executable "manage_dicoms.py" is a convenience script to execute DicomManager.manage().
+It is also a good example of how to use these modules.
 
 Have fun!
