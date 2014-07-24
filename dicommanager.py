@@ -217,27 +217,27 @@ class DicomManager:
         if 0x00181000 in dcm:
             modality = dcm.Modality.replace('/','')
         else:
-            modality = 'Unknown'
+            modality = 'UnknownModality'
 
         if 0x00080080 in dcm:
             institutionName = dcm.InstitutionName.replace('/','')
         else:
-            institutionName = 'Unknown'
+            institutionName = 'UnknownInstitution'
         
         if 0x00080070 in dcm:
             manufacturer = dcm.Manufacturer.replace('/','')
         else:
-            manufacturer = 'Unknown'
+            manufacturer = 'UnknownManufacturer'
 
         if 0x00081090 in dcm:
             model = dcm.ManufacturersModelName.replace('/','')
         else:
-            model = 'Unknown'
+            model = 'UnknownModelName'
         
         if 0x00181000 in dcm:
             deviceSerialNumber = dcm.DeviceSerialNumber.replace('/','')
         else:
-            deviceSerialNumber = 'Unknown'
+            deviceSerialNumber = 'UnknownSerialNumber'
         
         if 0x00100020 in dcm:
             patientId = dcm.PatientID.replace('/','')
@@ -248,22 +248,22 @@ class DicomManager:
         if 0x00100010 in dcm:
             patientName = dcm.PatientName.replace('/','')
         else:
-            patientName = 'Unknown'
+            patientName = 'UnknownPatientName'
         
         if 0x00100040 in dcm:
             patientSex = dcm.PatientSex.replace('/','')
         else:
-            patientSex = 'Unknown'
+            patientSex = 'UnknownSex'
         
         if 0x00101010 in dcm:
             patientAge = dcm.PatientAge.replace('/','')
         else:
-            patientAge = 'Unknown'
+            patientAge = 'UnknownAge'
         
         if 0x00080020 in dcm:
             studyDate = dcm.StudyDate.replace('/','')
         else:
-            studyDate = 'Unknown'
+            studyDate = 'UnknownDate'
         
         if 0x00080050 in dcm:
             accessionNumber = dcm.AccessionNumber.replace('/','')
@@ -274,7 +274,7 @@ class DicomManager:
         if 0x00081030 in dcm:
             studyDescription = dcm.StudyDescription.replace('/','')
         else:
-            studyDescription = 'Unknown'
+            studyDescription = 'UnknownDescription'
         
         if 0x0020000e in dcm:
             seriesUID = dcm.SeriesInstanceUID.replace('/','')
@@ -285,12 +285,12 @@ class DicomManager:
         if 0x00181030 in dcm:
             seriesProtocol = dcm.ProtocolName.replace('/','')
         else:
-            seriesProtocol = 'Unknown'
+            seriesProtocol = 'UnknownProtocol'
         
         if 0x0008103e in dcm:
             seriesDescription = dcm.SeriesDescription.replace('/','')
         else:
-            seriesDescription = 'Unknown'
+            seriesDescription = 'UnknownDescription'
         
         # Create names for level of the file tree hierarchy (i.e ..., study, series, image)
         scannerSlug = '_'.join([ manufacturer, model, deviceSerialNumber ]).replace(' ','_')
