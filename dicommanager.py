@@ -1,6 +1,7 @@
 # dicom_manager.py
 
 
+
 # add working directory to search path
 import os
 import sys
@@ -25,11 +26,10 @@ import dicommanagersettings as settings
 
 
 
-
-
 class DicomManager:
     
     #--------------------------------------------------------------------------------------------
+    # instantiation
     def __init__ ( self, init=True ):
 
         if init:
@@ -38,9 +38,8 @@ class DicomManager:
 
     
     #--------------------------------------------------------------------------------------------
+    # sets up and verifies necessary resources
     def init ( self ):
-        
-        print "Setting up the Dicom Manager..."
         
         # reduce check frequency to speed up things
         sys.setcheckinterval(1000)
@@ -95,14 +94,12 @@ class DicomManager:
         if not os.path.exists(self.settings.dicomDir):
             print "DICOM storage directory not found. Creating it..."
             os.makedirs(self.settings.dicomDir)
-        
-        print "Done!"
 
 
 
     #--------------------------------------------------------------------------------------------
+    # finds file paths to DICOM files under the given directory
     def find ( self, dir, recursive=True ):
-        #Function takes in dir of dicom files
         dicoms=[]
 
         # make local refs for speed
@@ -147,6 +144,7 @@ class DicomManager:
 
 
     #--------------------------------------------------------------------------------------------
+    # reads a given DICOM file to create a modified pydicom object
     def read ( self, dcmPath ):
         
         # check that the dicom exists
@@ -194,6 +192,7 @@ class DicomManager:
 
 
     #--------------------------------------------------------------------------------------------
+    # removes non-ascii characters from a pydicom object's header data
     def sanitizeDicom ( self, dcm ):
 
         # loop through DICOM tags we intend to record
@@ -202,7 +201,7 @@ class DicomManager:
             # check if tag is present
             if dcmHeaderTag in dcm:
 
-                # enforce single ascii string without quotes
+                # enforce single ascii string
                 dcm[dcmHeaderTag].value = "".join(i for i in ( str(dcm[dcmHeaderTag].value) ) if ord(i)<128)
                 
         return dcm
@@ -210,9 +209,8 @@ class DicomManager:
 
 
     #--------------------------------------------------------------------------------------------
-    # Creates storage directory for DICOM file based on its tags (i.e institution, demographics, etc.)
+    # computes the storage path or directory for DICOM file based on its tags (i.e institution, demographics, etc.)
     def storagePath ( self, dcm, directory=False):
-
         os_path_join = os.path.join
 
         # Checks if DICOM has values in each of the following tags. For certain tags, values are required so 'none' is returned. 
@@ -333,7 +331,7 @@ class DicomManager:
 
 
     #--------------------------------------------------------------------------------------------
-    # Replace (sanitize) all special charachters in a path.
+    # removes all special charachters in a path string
     def sanitizeStoragePath ( self, path ):
              
         path = path.replace('`','') \
@@ -368,8 +366,8 @@ class DicomManager:
 
 
     #--------------------------------------------------------------------------------------------
+    # records DICOM series header data into an SQLite database
     def record ( self, dcm ):
-        
         recordID = None
         cols = []
         vals = []
@@ -413,7 +411,7 @@ class DicomManager:
 
 
     #--------------------------------------------------------------------------------------------
-    # Moves DICOM from original location to managed file tree.  
+    # copies a DICOM file into a human-readable filetree
     def store ( self, dcm ):
         dcmPath = dcm.path
 
@@ -457,6 +455,7 @@ class DicomManager:
 
 
     #--------------------------------------------------------------------------------------------
+    # convenience function to read, record, store, and delete DICOM files
     def manage ( self, dcmPaths, deleteDcm=False, recordDcm=True, storeDcm=True ):
     
         # check if multiple DICOM paths are provided
@@ -509,6 +508,7 @@ class DicomManager:
 
         
     #--------------------------------------------------------------------------------------------
+    # creates a pydicom object containing the database record of a DICOM series
     def getSeriesRecord ( self, recordID=None, seriesUID=None, accessionNumber=None, patientID=None ):
         whereClause = None
         queryArg = None
@@ -563,6 +563,7 @@ class DicomManager:
 
 
     #--------------------------------------------------------------------------------------------
+    # conveniece function to compute the storage directory of a recorded DICOM series
     def getSeriesDir ( self, recordID=None, seriesUID=None, accessionNumber=None, patientID=None ):
 
         # get DICOM object representation of series record
@@ -579,6 +580,7 @@ class DicomManager:
 
 
     #--------------------------------------------------------------------------------------------
+    # copies managed DICOM files to a given location with optional formatting
     def export(self, recordIDs, dstRoot, ageBreakdown=False, directoryTree=True, readableSeriesSlug=True):
 
         # check if multiple series record IDs were provided
@@ -675,6 +677,7 @@ class DicomManager:
 
 
     #--------------------------------------------------------------------------------------------
+    # deletes managed DICOM files
     def delete(self, recordIDs):
 
         # check if multiple series record IDs were provided
@@ -725,6 +728,7 @@ class DicomManager:
 
     
     #--------------------------------------------------------------------------------------------
+    # records notes about DICOM series
     def note(self, seriesInstanceUIDs, note):
             
         # check for series IDs list
@@ -751,7 +755,8 @@ class DicomManager:
             
             
     #--------------------------------------------------------------------------------------------
-    def delete_notes(self, noteIds):
+    # deletes DICOM series notes
+    def deleteNotes(self, noteIds):
             
         # check for series IDs list
         if not isinstance( noteIds, list ):

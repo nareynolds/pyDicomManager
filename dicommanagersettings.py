@@ -30,7 +30,7 @@ class DicomManagerSettings:
         self.dbTblSeriesNotes = 'Notes'
     
         # set the root directory of DICOM storage
-        self.rootDir = os.path.join( selfDir, 'testing' )
+        self.rootDir = os.path.join( selfDir, 'data' )
         if not self.rootDir:
             self.rootDir = raw_input("Enter the root directory where dicoms are to be stored and managed: ").strip().replace('\\','')
     
