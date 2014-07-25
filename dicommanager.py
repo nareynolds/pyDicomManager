@@ -649,22 +649,20 @@ class DicomManager:
                         dstRoot = os_path_join(dstRoot, ageRange['name'])
 
             # option: do/don't replicate storage file-tree for exported DICOMs
-            dstSeriesDir = None
             if directoryTree:
-
                 # create destination path
                 dstSeriesDir = srcSeriesDir.replace( self.settings.dicomDir, dstRoot )
 
             else:
                 # create destination path
+                seriesSlug = os.path.basename(srcSeriesDir)
                 dstSeriesDir = os_path_join( dstRoot, seriesSlug )
 
             # option: do/don't keep human readable series slug
             if not readableSeriesSlug:
 
                 # alter destination path
-                seriesSlug = 'series_%d' % recordID
-                dstSeriesDir = os_path_join( os.path.dirname(dstSeriesDir), seriesSlug )
+                dstSeriesDir = os_path_join( os.path.dirname(dstSeriesDir), dcm.SeriesInstanceUID )
 
             # check that series destination doesn't exist yet
             if os_path_exists( dstSeriesDir ):

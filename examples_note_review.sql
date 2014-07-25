@@ -1,5 +1,5 @@
 ------------------------------------------------------------------------------------------
---useful tags to add to the SeriesNotes table
+--useful tags to add to the Notes table
 #reviewed:date
 #artifacts
 #badFOV
@@ -78,13 +78,13 @@ FROM
 	Series
 WHERE
 (
-	id IN All_week0_T1_series 																								--n=205
+	id IN All_week0_T1_series 																--n=205
 )
 AND
 (
-		id IN        ( SELECT SeriesId FROM SeriesNotes WHERE Note LIKE '%#reviewed%' )			--n=203
+		id IN        ( SELECT SeriesId FROM SeriesNotes WHERE Note LIKE '%#reviewed%' )		--n=203
 	AND
-		id NOT IN ( SELECT SeriesId FROM SeriesNotes WHERE Note LIKE '%#artifacts%' )			--n=109
+		id NOT IN ( SELECT SeriesId FROM SeriesNotes WHERE Note LIKE '%#artifacts%' )		--n=109
 	AND
 		id NOT IN ( SELECT SeriesId FROM SeriesNotes WHERE Note LIKE '%#badFOV%' )			--n=95
 	AND
