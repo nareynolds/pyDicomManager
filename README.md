@@ -2,13 +2,13 @@ pyDicomManager
 ================
 
 Intended audience:
-These modules were written to help in the examination, organization, and management of a large number of DICOM files.
+These modules were written to help in the exploration, organization, and management of a large number of DICOM files.
 
 Intended use:
 This copies or moves DICOM files into a human-readable filetree.
 This records DICOM header data into an SQLite database with series-level granularity.
 This allows you to record notes about each series into the same database.
-This allows you to export managed DICOM files to a location of your choice.
+This allows you to export selected DICOM files out of the filetree to a location of your choice.
 
 Details:
 This was written for Python 2.7.X
