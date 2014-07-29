@@ -14,7 +14,7 @@ Details:
 This was written for Python 2.7.X
 This relies on pydicom ( https://code.google.com/p/pydicom/ ) and sqlite3 ( https://docs.python.org/2/library/sqlite3.html ) extensively.
 All common use cases are presented in the file "examples.py"
-Some settings, such as the location of managed filetree, can be set in the file "dicommanagersettings.py"
+Settings, such as the location of managed filetree and which DICOM tags are recorded can be set in the file "dicommanagersettings.py"
 The default location of the SQLite database is in this directory.
 The default location of the managed filetree is in "data/DICOM".
 An example of the filetree structure can be seen in "data/DICOM_example_filetree".

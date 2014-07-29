@@ -201,8 +201,15 @@ class DicomManager:
             # check if tag is present
             if dcmHeaderTag in dcm:
 
-                # enforce single ascii string
-                dcm[dcmHeaderTag].value = "".join(i for i in ( str(dcm[dcmHeaderTag].value) ) if ord(i)<128)
+                try:
+                    # enforce single ascii string
+                    dcm[dcmHeaderTag].value = "".join(i for i in ( str(dcm[dcmHeaderTag].value) ) if ord(i)<128)
+                except Exception, e:
+                    print repr(e)
+                    print "DICOM could not be sanitized"
+                    print dcm[dcmHeaderTag]
+                    print dcm[dcmHeaderTag].value
+                    return None
                 
         return dcm
 

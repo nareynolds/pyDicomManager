@@ -255,14 +255,15 @@ class DicomManagerSettings:
             0x00080021, #Series Date
             0x00080022, #Acquisition Date
             0x00080023, #Content Date
-            #0x00080030, #Study Time
-            #0x00080031, #Series Time
-            #0x00080032, #Acquisition Time
-            #0x00080033, #Content Time
+            0x00080030, #Study Time
+            0x00080031, #Series Time
+            0x00080032, #Acquisition Time
+            0x00080033, #Content Time
             0x00080050, #Accession Number
             0x00080060, #Modality
             0x00080070, #Manufacturer
             0x00080080, #Institution Name
+            0x00080082, #Institution Code Sequence
             0x00080090, #Referring Physician's Name
             0x00081010, #Station Name
             0x00081030, #Study Description
@@ -281,6 +282,8 @@ class DicomManagerSettings:
             #0x00101080, #Military Rank
             #0x00101081, #Branch of Service
             0x001021b0, #Additional Patient History
+            0x00180010, #Contrast/Bolus Agent
+            0x00180015, #Body Part Examined
             0x00180020, #Scanning Sequence
             0x00180021, #Sequence Variant
             0x00180022, #Scan Options
@@ -296,19 +299,39 @@ class DicomManagerSettings:
             0x00180086, #Echo Number0xs)
             0x00180087, #Magnetic Field Strength
             0x00180088, #Spacing Between Slices
-            #0x00180091, #Echo Train Length
-            #0x00180093, #Percent Sampling
-            #0x00180094, #Percent Phase Field of View
-            #0x00180095, #Pixel Bandwidth
+            0x00180091, #Echo Train Length
+            0x00180093, #Percent Sampling
+            0x00180094, #Percent Phase Field of View
+            0x00180095, #Pixel Bandwidth
             0x00181000, #Device Serial Number
+            0x00181002, #Device UID
+            0x00181003, #Device ID
             0x00181020, #Software Version0xs)
             0x00181030, #Protocol Name
-            #0x00181250, #Receive Coil Name
+            0x00181040, #Contrast Bolus Route
+            0x00181041, #Contrast/Bolus Volume
+            0x00181250, #Receive Coil Name
             #0x00181310, #Acquisition Matrix
             #0x00181312, #In-plane Phase Encoding Direction
             #0x00181314, #Flip Angle
             #0x00181315, #Variable Flip Angle Flag
             0x00185100, #Patient Position
+            0x00189075, #Diffusion Directionality
+            0x00189076, #Diffusion Gradient Direction Sequence
+            0x00189087, #Diffusion b-value
+            0x00189089, #Diffusion Gradient Orientation
+            0x00189107, #MR Spatial Saturation Sequence
+            0x00189112, #MR Timing and Related Parameters Sequence
+            0x00189114, #MR Echo Sequence
+            0x00189115, #MR Modifier Sequence
+            0x00189117, #MR Diffusion Sequence
+            0x00189601, #Diffusion b-matrix Sequence
+            0x00189602, #Diffusion b-value XX
+            0x00189603, #Diffusion b-value XY
+            0x00189604, #Diffusion b-value XZ
+            0x00189605, #Diffusion b-value YY
+            0x00189606, #Diffusion b-value YZ
+            0x00189607, #Diffusion b-value ZZ
             0x0020000d, #Study Instance UID
             0x0020000e, #Series Instance UID
             0x00200010, #Study ID
